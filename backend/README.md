@@ -1,4 +1,4 @@
-# GridTwin — Restoration & Optimization Engine (Member 2: R. Kishore)
+# GridTwin — Restoration & Optimization Engine (Member 2: Kishore G)
 
 > **Track**: Critical Grid & Power Shield  
 > **Module**: RESTORE (AI-Assisted Digital Twin for Cascading Grid Failure Simulation and Restoration Optimization)  
