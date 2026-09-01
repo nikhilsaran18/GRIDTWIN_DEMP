@@ -127,6 +127,18 @@ class RiskScore(BaseModel):
         description="Risk classification"
     )
     reason: str = Field(..., description="Explanation of risk")
+    loading_percentage: Optional[float] = Field(
+        None,
+        description="Component loading percentage used by the risk engine"
+    )
+    criticality_score: Optional[float] = Field(
+        None,
+        description="Hema criticality score 0-100"
+    )
+    risk_source: Optional[str] = Field(
+        None,
+        description="Identifier for the risk-scoring implementation"
+    )
 
 
 class RiskAnalysis(BaseModel):
@@ -137,6 +149,14 @@ class RiskAnalysis(BaseModel):
         description="Component most likely to fail next"
     )
     overall_risk: float = Field(..., description="Overall system risk 0-100")
+    analytics: Optional[dict] = Field(
+        None,
+        description="Dashboard analytics derived from current risk results"
+    )
+    risk_source: Optional[str] = Field(
+        None,
+        description="Identifier for the risk-scoring implementation"
+    )
 
 
 class RestorationAction(BaseModel):
