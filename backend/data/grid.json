@@ -1,0 +1,150 @@
+{
+  "nodes": [
+    {
+      "id": "S1",
+      "name": "Source Substation S1",
+      "type": "source",
+      "capacity_mw": 50.0,
+      "load_mw": 5.0,
+      "status": "normal",
+      "criticality": 1.0,
+      "is_critical_load": false
+    },
+    {
+      "id": "T7",
+      "name": "Transformer T7",
+      "type": "transformer",
+      "capacity_mw": 10.0,
+      "load_mw": 8.0,
+      "status": "normal",
+      "criticality": 0.82,
+      "is_critical_load": false
+    },
+    {
+      "id": "T8",
+      "name": "Transformer T8",
+      "type": "transformer",
+      "capacity_mw": 10.0,
+      "load_mw": 7.5,
+      "status": "normal",
+      "criticality": 0.75,
+      "is_critical_load": false
+    },
+    {
+      "id": "F3",
+      "name": "Feeder F3",
+      "type": "feeder",
+      "capacity_mw": 5.0,
+      "load_mw": 3.0,
+      "status": "normal",
+      "criticality": 0.6,
+      "is_critical_load": false
+    },
+    {
+      "id": "F5",
+      "name": "Feeder F5",
+      "type": "feeder",
+      "capacity_mw": 6.0,
+      "load_mw": 4.0,
+      "status": "normal",
+      "criticality": 0.7,
+      "is_critical_load": false
+    },
+    {
+      "id": "L1",
+      "name": "Residential Load L1",
+      "type": "load",
+      "capacity_mw": 2.0,
+      "load_mw": 2.0,
+      "status": "normal",
+      "criticality": 0.3,
+      "is_critical_load": false
+    },
+    {
+      "id": "H1",
+      "name": "Hospital H1 - Critical",
+      "type": "hospital",
+      "capacity_mw": 3.0,
+      "load_mw": 2.5,
+      "status": "normal",
+      "criticality": 1.0,
+      "is_critical_load": true
+    },
+    {
+      "id": "L2",
+      "name": "Commercial Load L2",
+      "type": "load",
+      "capacity_mw": 2.5,
+      "load_mw": 2.0,
+      "status": "normal",
+      "criticality": 0.4,
+      "is_critical_load": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "E-S1-T7",
+      "source": "S1",
+      "target": "T7",
+      "capacity_mw": 10.0,
+      "load_mw": 8.0,
+      "status": "normal"
+    },
+    {
+      "id": "E-S1-T8",
+      "source": "S1",
+      "target": "T8",
+      "capacity_mw": 10.0,
+      "load_mw": 7.5,
+      "status": "normal"
+    },
+    {
+      "id": "E-T7-F3",
+      "source": "T7",
+      "target": "F3",
+      "capacity_mw": 8.0,
+      "load_mw": 6.0,
+      "status": "normal"
+    },
+    {
+      "id": "E-T8-F5",
+      "source": "T8",
+      "target": "F5",
+      "capacity_mw": 8.0,
+      "load_mw": 6.0,
+      "status": "normal"
+    },
+    {
+      "id": "E-F3-L1",
+      "source": "F3",
+      "target": "L1",
+      "capacity_mw": 2.5,
+      "load_mw": 2.0,
+      "status": "normal"
+    },
+    {
+      "id": "E-F3-H1",
+      "source": "F3",
+      "target": "H1",
+      "capacity_mw": 3.0,
+      "load_mw": 2.5,
+      "status": "normal"
+    },
+    {
+      "id": "E-F5-L2",
+      "source": "F5",
+      "target": "L2",
+      "capacity_mw": 2.5,
+      "load_mw": 2.0,
+      "status": "normal"
+    },
+    {
+      "id": "E-F5-H1",
+      "source": "F5",
+      "target": "H1",
+      "capacity_mw": 3.0,
+      "load_mw": 0.0,
+      "status": "normal"
+    }
+  ]
+}
