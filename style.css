@@ -148,9 +148,20 @@ nav {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: var(--green);
     margin-right: 7px;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.online-dot.online,
+.status-dot.online {
+    background: var(--green);
     box-shadow: 0 0 10px rgba(45, 223, 140, 0.7);
+}
+
+.online-dot.offline,
+.status-dot.offline {
+    background: var(--red);
+    box-shadow: 0 0 10px rgba(255, 83, 100, 0.7);
 }
 
 
