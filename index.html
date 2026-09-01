@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GridTwin | Grid Resilience Platform</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+
+        <div class="logo">
+            <div class="logo-icon">⚡</div>
+            <div>
+                <h2>GridTwin</h2>
+                <span>Grid Intelligence</span>
+            </div>
+        </div>
+
+        <nav>
+            <button class="nav-item active" onclick="showSection('overview')">
+                <span>◈</span> Overview
+            </button>
+
+            <button class="nav-item" onclick="showSection('grid')">
+                <span>⌁</span> Grid Map
+            </button>
+
+            <button class="nav-item" onclick="showSection('risk')">
+                <span>⚠</span> Risk Analysis
+            </button>
+
+            <button class="nav-item" onclick="showSection('critical')">
+                <span>✚</span> Critical Facilities
+            </button>
+
+            <button class="nav-item" onclick="showSection('restore')">
+                <span>↻</span> Restoration
+            </button>
+        </nav>
+
+        <div class="workflow">
+            <p>GRIDTWIN WORKFLOW</p>
+
+            <div class="workflow-step active-step">
+                <span>01</span>
+                SIMULATE
+            </div>
+
+            <div class="workflow-step">
+                <span>02</span>
+                PREDICT
+            </div>
+
+            <div class="workflow-step">
+                <span>03</span>
+                CONTAIN
+            </div>
+
+            <div class="workflow-step">
+                <span>04</span>
+                RESTORE
+            </div>
+        </div>
+
+        <div class="sidebar-bottom">
+            <span class="online-dot"></span>
+            Simulation Engine Online
+        </div>
+
+    </aside>
+
+
+    <!-- Main -->
+    <main class="main">
+
+        <!-- Header -->
+        <header class="header">
+
+            <div>
+                <h1>Grid Resilience Dashboard</h1>
+                <p>Simulate failures. Predict cascades. Restore intelligently.</p>
+            </div>
+
+            <div class="system-status">
+                <span class="status-dot"></span>
+                SYSTEM ONLINE
+            </div>
+
+        </header>
+
+
+        <!-- Overview -->
+        <section id="overview" class="section active-section">
+
+            <!-- Statistics -->
+            <div class="stats-grid">
+
+                <div class="stat-card">
+                    <div class="stat-icon blue">⚡</div>
+                    <div>
+                        <span>Total Components</span>
+                        <strong id="totalComponents">12</strong>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon green">✓</div>
+                    <div>
+                        <span>Healthy</span>
+                        <strong id="healthyComponents">11</strong>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon orange">⚠</div>
+                    <div>
+                        <span>At Risk</span>
+                        <strong id="riskComponents">0</strong>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon red">✕</div>
+                    <div>
+                        <span>Failed</span>
+                        <strong id="failedComponents">0</strong>
+                    </div>
+                </div>
+
+            </div>
+
+
+            <!-- Main Grid Area -->
+            <div class="dashboard-grid">
+
+                <!-- Canvas -->
+                <div class="panel grid-panel">
+
+                    <div class="panel-header">
+                        <div>
+                            <h2>Grid Topology</h2>
+                            <p>Click a component to inspect it</p>
+                        </div>
+
+                        <div class="legend">
+                            <span><i class="legend-dot healthy"></i> Healthy</span>
+                            <span><i class="legend-dot warning"></i> Warning</span>
+                            <span><i class="legend-dot failed"></i> Failed</span>
+                        </div>
+                    </div>
+
+                    <div class="canvas-container">
+                        <canvas id="gridCanvas"></canvas>
+                    </div>
+
+                </div>
+
+
+                <!-- Component Information -->
+                <div class="panel component-panel">
+
+                    <div class="panel-header">
+                        <div>
+                            <h2>Component Details</h2>
+                            <p id="componentHint">Select a component</p>
+                        </div>
+                    </div>
+
+                    <div id="componentDetails" class="empty-state">
+                        <div class="empty-icon">⌁</div>
+                        <h3>No Component Selected</h3>
+                        <p>Click a transformer, feeder, load or facility on the grid.</p>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Impact Section -->
+            <div id="impactPanel" class="impact-panel hidden">
+
+                <div class="impact-header">
+                    <div>
+                        <span class="danger-label">CASCADE DETECTED</span>
+                        <h2>Failure Impact Analysis</h2>
+                    </div>
+
+                    <div class="impact-score">
+                        <span>Risk Score</span>
+                        <strong id="riskScore">82%</strong>
+                    </div>
+                </div>
+
+                <div class="impact-grid">
+
+                    <div class="impact-card failed-card">
+                        <span>FAILED COMPONENT</span>
+                        <strong id="failedName">T7</strong>
+                        <small>Transformer</small>
+                    </div>
+
+                    <div class="impact-card warning-card">
+                        <span>OVERLOADED</span>
+                        <strong>F3</strong>
+                        <small>118% simulated loading</small>
+                    </div>
+
+                    <div class="impact-card critical-card">
+                        <span>CRITICAL FACILITY</span>
+                        <strong>H1</strong>
+                        <small>Hospital supply risk</small>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Restoration -->
+            <div id="restorationPanel" class="panel restoration-panel hidden">
+
+                <div class="panel-header">
+                    <div>
+                        <h2>🛠 Recommended Restoration</h2>
+                        <p>Best simulated recovery sequence</p>
+                    </div>
+
+                    <span class="recommendation-badge">RECOMMENDED</span>
+                </div>
+
+                <div class="restoration-list">
+
+                    <div class="restore-step">
+                        <span>01</span>
+                        <div>
+                            <strong>Isolate failed component</strong>
+                            <p>Separate T7 from the affected network.</p>
+                        </div>
+                        <b>✓</b>
+                    </div>
+
+                    <div class="restore-step">
+                        <span>02</span>
+                        <div>
+                            <strong>Transfer feasible load</strong>
+                            <p>Use available alternate supply path through F5.</p>
+                        </div>
+                        <b>✓</b>
+                    </div>
+
+                    <div class="restore-step">
+                        <span>03</span>
+                        <div>
+                            <strong>Prioritize Hospital H1</strong>
+                            <p>Protect critical healthcare supply.</p>
+                        </div>
+                        <b>✓</b>
+                    </div>
+
+                    <div class="restore-step">
+                        <span>04</span>
+                        <div>
+                            <strong>Restore remaining loads</strong>
+                            <p>Gradually restore non-critical services.</p>
+                        </div>
+                        <b>✓</b>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Grid Map -->
+        <section id="grid" class="section">
+
+            <div class="page-title">
+                <h2>Grid Map</h2>
+                <p>Interactive representation of the electrical network.</p>
+            </div>
+
+            <div class="panel full-panel">
+                <div class="canvas-container large">
+                    <canvas id="gridCanvasLarge"></canvas>
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- Risk -->
+        <section id="risk" class="section">
+
+            <div class="page-title">
+                <h2>Risk Analysis</h2>
+                <p>Identify vulnerable components and cascading risk.</p>
+            </div>
+
+            <div class="risk-grid">
+
+                <div class="panel risk-main">
+                    <h3>Overall Grid Risk</h3>
+
+                    <div class="risk-meter">
+                        <div id="riskMeterFill"></div>
+                    </div>
+
+                    <div class="risk-value">
+                        <strong id="riskValue">LOW</strong>
+                        <span>Current simulated risk</span>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Risk Factors</h3>
+
+                    <div class="factor">
+                        <span>Component Loading</span>
+                        <b>72%</b>
+                    </div>
+
+                    <div class="factor">
+                        <span>Network Dependency</span>
+                        <b>64%</b>
+                    </div>
+
+                    <div class="factor">
+                        <span>Critical Exposure</span>
+                        <b>81%</b>
+                    </div>
+
+                    <div class="factor">
+                        <span>Redundancy</span>
+                        <b>42%</b>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Critical Facilities -->
+        <section id="critical" class="section">
+
+            <div class="page-title">
+                <h2>Critical Facilities</h2>
+                <p>Monitor high-priority services affected by grid failures.</p>
+            </div>
+
+            <div class="facility-grid">
+
+                <div class="facility-card">
+                    <div class="facility-icon">🏥</div>
+                    <div>
+                        <h3>Hospital H1</h3>
+                        <p>Critical medical facility</p>
+                    </div>
+                    <span class="facility-status safe">SAFE</span>
+                </div>
+
+                <div class="facility-card">
+                    <div class="facility-icon">🚒</div>
+                    <div>
+                        <h3>Emergency Station E1</h3>
+                        <p>Emergency response facility</p>
+                    </div>
+                    <span class="facility-status safe">SAFE</span>
+                </div>
+
+                <div class="facility-card">
+                    <div class="facility-icon">🏭</div>
+                    <div>
+                        <h3>Industrial Load L2</h3>
+                        <p>High consumption load</p>
+                    </div>
+                    <span class="facility-status safe">NORMAL</span>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Restoration -->
+        <section id="restore" class="section">
+
+            <div class="page-title">
+                <h2>Restoration Center</h2>
+                <p>Recommended actions for recovering affected services.</p>
+            </div>
+
+            <div class="panel">
+
+                <div class="restore-big-icon">🛠️</div>
+
+                <h2>Restoration Strategy</h2>
+
+                <p class="restore-description">
+                    GridTwin evaluates possible isolation, rerouting and
+                    restoration actions while prioritizing critical facilities.
+                </p>
+
+                <button class="primary-btn" onclick="showRestoration()">
+                    Generate Restoration Plan
+                </button>
+
+                <div id="restoreMessage"></div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <script src="script.js"></script>
+
+</body>
+</html>
