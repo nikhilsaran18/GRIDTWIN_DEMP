@@ -29,6 +29,7 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from models.grid_schemas import (
@@ -58,6 +59,9 @@ app = FastAPI(
     description="AI-Assisted Grid Restoration and Cascade Analysis Engine",
     version="1.0.0"
 )
+
+# Repository root containing index.html, style.css, and script.js
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # CORS Configuration for frontend development
 ALLOWED_ORIGINS = [
@@ -161,6 +165,27 @@ async def root():
     return SystemResponse(
         system="GridTwin",
         status="online"
+    )
+
+
+@app.get("/dashboard", include_in_schema=False)
+async def dashboard():
+    """Serve the GridTwin frontend."""
+    return FileResponse(PROJECT_ROOT / "index.html")
+
+
+@app.get("/style.css", include_in_schema=False)
+async def frontend_css():
+    """Serve the frontend stylesheet."""
+    return FileResponse(PROJECT_ROOT / "style.css", media_type="text/css")
+
+
+@app.get("/script.js", include_in_schema=False)
+async def frontend_js():
+    """Serve the frontend JavaScript."""
+    return FileResponse(
+        PROJECT_ROOT / "script.js",
+        media_type="application/javascript",
     )
 
 
