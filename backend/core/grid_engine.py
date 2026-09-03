@@ -139,8 +139,15 @@ class GridDigitalTwin:
         """
         reachable = set()
         try:
-            # Get all nodes reachable from source
-            reachable = nx.descendants(self.graph, source)
+            failed = {
+                node_id for node_id, data in self._node_data.items()
+                if data.get("status") == "failed"
+            }
+            graph = self.graph.copy()
+            graph.remove_nodes_from(failed - {source})
+            if source in failed:
+                return set()
+            reachable = nx.descendants(graph, source)
             reachable.add(source)  # Include source itself
         except nx.NetworkXError:
             # Source doesn't exist or is isolated
@@ -330,3 +337,45 @@ class GridDigitalTwin:
         # Remove the originally-failed component from results
         affected = [n for n in disconnected if n != component_id]
         return affected
+
+    def apply_failure_scenario(self, component_id: str) -> Dict[str, List[str]]:
+        """Apply one failure and classify current node and edge connectivity."""
+        if component_id not in self._node_data:
+            return {"warning": [], "overloaded": [], "disconnected": [], "affected_edges": []}
+
+        self.fail_component(component_id)
+        disconnected = set()
+        for node_ids in self.identify_disconnected_nodes().values():
+            disconnected.update(node_ids)
+
+        for node_id, node_data in self._node_data.items():
+            if node_id == component_id:
+                status = "failed"
+            elif node_id in disconnected:
+                status = "critical_risk" if node_data.get("is_critical_load") else "disconnected"
+            else:
+                status = "normal"
+            node_data["status"] = status
+            self.graph.nodes[node_id]["status"] = status
+
+        affected_edges = []
+        for edge_id, edge_data in self._edge_data.items():
+            source = edge_data["source"]
+            target = edge_data["target"]
+            if source == component_id or target == component_id:
+                status = "failed"
+            elif source in disconnected or target in disconnected:
+                status = "disconnected"
+            else:
+                status = "normal"
+            edge_data["status"] = status
+            self.graph.edges[source, target]["status"] = status
+            if status != "normal":
+                affected_edges.append(edge_id)
+
+        return {
+            "warning": [],
+            "overloaded": [],
+            "disconnected": sorted(disconnected),
+            "affected_edges": affected_edges,
+        }

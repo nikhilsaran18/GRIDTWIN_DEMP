@@ -4,7 +4,9 @@
 // ============================================================
 
 // API Configuration
-const API_BASE = window.location.origin;
+const API_BASE = window.location.port === "5500"
+    ? "http://127.0.0.1:8001"
+    : window.location.origin;
 let backendHealthy = false;
 let lastSimulationResponse = null;
 
@@ -24,6 +26,7 @@ const nodePositions = {
 
 // Grid data from backend
 let nodes = [];
+window.nodes = nodes;
 let connections = [];
 let backendGridData = null;
 
@@ -147,6 +150,10 @@ async function loadGridFromBackend() {
     });
 
     console.log(`Grid loaded: ${nodes.length} nodes, ${connections.length} connections`);
+    window.nodes = nodes;
+    if (window.grid3D) {
+        window.grid3D.syncGridData(gridData);
+    }
     updateStatistics();
     drawGrid();
 
@@ -488,8 +495,44 @@ function showComponentDetails(node) {
 }
 
 // ============================================================================
-// FAILURE SIMULATION
+// FAILURE SIMULATION & 3D INTEGRATION
 // ============================================================================
+
+let currentGridView = "2d";
+
+function switchGridView(mode) {
+    currentGridView = mode;
+    const canvas2D = document.getElementById("gridCanvas");
+    const container3D = document.getElementById("grid3dContainer");
+    const button2D = document.getElementById("btnView2D");
+    const button3D = document.getElementById("btnView3D");
+
+    button2D?.classList.toggle("active", mode === "2d");
+    button3D?.classList.toggle("active", mode === "3d");
+
+    if (mode === "3d") {
+        if (canvas2D) canvas2D.style.display = "none";
+        container3D?.classList.remove("hidden");
+        if (window.grid3D) {
+            if (!window.grid3D.isInitialized) window.grid3D.init("grid3dContainer");
+            window.grid3D.onWindowResize();
+        }
+        return;
+    }
+
+    container3D?.classList.add("hidden");
+    if (canvas2D) canvas2D.style.display = "block";
+    resizeCanvas();
+    drawGrid();
+}
+
+window.selectNodeFrom3D = function(nodeId) {
+    const node = nodes.find(candidate => candidate.id === nodeId);
+    if (!node) return;
+    selectedNode = node;
+    showComponentDetails(node);
+    drawGrid();
+};
 
 async function simulateFailureButtonClick(nodeId) {
     if (!backendHealthy) {
@@ -497,15 +540,18 @@ async function simulateFailureButtonClick(nodeId) {
         return;
     }
 
-    // Show loading
     const failedNode = nodes.find(n => n.id === nodeId);
     if (!failedNode) return;
 
-    // Call backend
+    if (window.grid3D?.isInitialized) {
+        window.grid3D.triggerFailureAnimation(nodeId);
+    }
+
     const simulationResult = await simulateFailureBackend(nodeId);
 
     if (!simulationResult) {
         alert("Simulation failed. Please try again.");
+        window.grid3D?.reset();
         return;
     }
 
@@ -533,6 +579,10 @@ async function simulateFailureButtonClick(nodeId) {
                 frontendNode.status = "warning";
             }
         });
+    }
+
+    if (window.grid3D?.isInitialized) {
+        window.grid3D.updateCascade3D(simulationResult);
     }
 
     // Update statistics
@@ -675,6 +725,8 @@ async function resetSimulationButtonClick() {
 
 function resetSimulationUI() {
     simulationActive = false;
+
+    window.grid3D?.reset();
 
     // Reset all node statuses
     nodes.forEach(node => {

@@ -142,8 +142,13 @@
 
                     <div class="panel-header">
                         <div>
-                            <h2>Grid Topology</h2>
+                            <h2>Grid Topology &amp; Digital Twin</h2>
                             <p>Click a component to inspect it</p>
+                        </div>
+
+                        <div class="view-toggle" role="group" aria-label="Grid view">
+                            <button id="btnView2D" class="view-toggle-btn active" type="button" onclick="switchGridView('2d')">2D Topology</button>
+                            <button id="btnView3D" class="view-toggle-btn" type="button" onclick="switchGridView('3d')">3D Digital Twin</button>
                         </div>
 
                         <div class="legend">
@@ -153,8 +158,36 @@
                         </div>
                     </div>
 
-                    <div class="canvas-container">
+                    <div class="canvas-container" id="canvasContainer">
                         <canvas id="gridCanvas"></canvas>
+                        <div id="grid3dContainer" class="grid-3d-container hidden">
+                            <canvas id="gridCanvas3D"></canvas>
+
+                            <div id="grid3dTooltip" class="grid3d-tooltip hidden">
+                                <div class="tooltip-header">
+                                    <span id="ttId">S1</span>
+                                    <span id="ttType" class="tooltip-badge">Substation</span>
+                                </div>
+                                <div class="tooltip-row"><span>Status:</span><strong id="ttStatus" class="healthy">NORMAL</strong></div>
+                                <div class="tooltip-row"><span>Loading:</span><strong id="ttLoad">0%</strong></div>
+                                <div class="tooltip-row"><span>Capacity:</span><strong id="ttCap">0.0 MW</strong></div>
+                            </div>
+
+                            <div class="cinematic-overlay hidden" id="cinematicOverlay">
+                                <div class="cinematic-banner">
+                                    <span class="cinematic-badge">SIMULATED ARC FAULT</span>
+                                    <h3 id="cinematicTitle">CRITICAL OUTAGE</h3>
+                                    <p id="cinematicSubtitle">Executing physical arc fault simulation</p>
+                                </div>
+                            </div>
+
+                            <div class="view-controls-3d">
+                                <button class="ctrl-btn-3d" type="button" onclick="window.grid3D &amp;&amp; window.grid3D.resetCamera()" title="Reset camera">Reset View</button>
+                                <button class="ctrl-btn-3d" type="button" onclick="window.grid3D &amp;&amp; window.grid3D.setTopView()" title="Overhead top view">Top View</button>
+                                <button class="ctrl-btn-3d" type="button" onclick="window.grid3D &amp;&amp; window.grid3D.fitGrid()" title="Fit complete grid">Fit Grid</button>
+                                <button class="ctrl-btn-3d" type="button" onclick="window.grid3D &amp;&amp; window.grid3D.toggleAutoRotate()" title="Toggle orbit">Orbit</button>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -421,6 +454,9 @@
     </main>
 
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="grid3d.js"></script>
     <script src="script.js"></script>
 
 </body>

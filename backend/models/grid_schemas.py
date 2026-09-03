@@ -15,6 +15,9 @@ StatusType = Literal[
     "warning",
     "high_risk",
     "critical",
+    "at_risk",
+    "overloaded",
+    "critical_risk",
     "failed",
     "isolated",
     "disconnected"
@@ -258,6 +261,15 @@ class SimulationResponse(BaseModel):
         ...,
         description="Impact metrics"
     )
+
+    grid: Optional[GridResponse] = Field(
+        None,
+        description="Authoritative grid state for this scenario"
+    )
+    warning_components: List[NodeSchema] = Field(default_factory=list)
+    overloaded_components: List[NodeSchema] = Field(default_factory=list)
+    disconnected_components: List[NodeSchema] = Field(default_factory=list)
+    affected_edges: List[EdgeSchema] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):

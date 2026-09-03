@@ -189,6 +189,15 @@ async def frontend_js():
     )
 
 
+@app.get("/grid3d.js", include_in_schema=False)
+async def frontend_grid3d_js():
+    """Serve the 3D visualizer JavaScript."""
+    return FileResponse(
+        PROJECT_ROOT / "grid3d.js",
+        media_type="application/javascript",
+    )
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health():
     """Health check endpoint."""
