@@ -378,6 +378,10 @@ canvas {
     background: var(--red);
 }
 
+.legend-dot.critical {
+    background: #a879ff;
+}
+
 
 /* ================= COMPONENT DETAILS ================= */
 
@@ -506,6 +510,7 @@ canvas {
     color: var(--red);
     font-size: 9px;
     letter-spacing: 1px;
+    font-weight: 700;
 }
 
 .impact-header h2 {
@@ -537,6 +542,9 @@ canvas {
 .impact-card {
     padding: 15px;
     border-radius: 9px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .impact-card span {
@@ -544,32 +552,51 @@ canvas {
     color: var(--muted);
     display: block;
     margin-bottom: 7px;
+    letter-spacing: 0.5px;
 }
 
 .impact-card strong {
     display: block;
-    font-size: 18px;
+    font-size: 17px;
     margin-bottom: 4px;
 }
 
 .impact-card small {
     color: var(--muted);
     font-size: 10px;
+    line-height: 1.4;
 }
 
 .failed-card {
     background: #28141a;
     border: 1px solid #4b2029;
 }
+.failed-card strong {
+    color: var(--red);
+}
 
 .warning-card {
     background: #28200e;
     border: 1px solid #4b3a16;
 }
+.warning-card strong {
+    color: var(--orange);
+}
 
 .critical-card {
     background: #21152b;
     border: 1px solid #422657;
+}
+.critical-card strong {
+    color: #c084fc;
+}
+
+.neutral-card {
+    background: #0d1e18;
+    border: 1px solid #164e3b;
+}
+.neutral-card strong {
+    color: var(--green);
 }
 
 
@@ -586,6 +613,8 @@ canvas {
     padding: 6px 10px;
     border-radius: 15px;
     font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 .restoration-list {
@@ -596,30 +625,36 @@ canvas {
 
 .restore-step {
     display: grid;
-    grid-template-columns: 35px 1fr 30px;
+    grid-template-columns: 35px 1fr auto;
     align-items: center;
     background: #101721;
+    border: 1px solid var(--border);
     padding: 13px;
     border-radius: 8px;
+    gap: 12px;
 }
 
 .restore-step > span {
     color: var(--blue);
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .restore-step strong {
-    font-size: 12px;
+    font-size: 13px;
+    display: block;
 }
 
 .restore-step p {
     color: var(--muted);
-    font-size: 10px;
-    margin-top: 4px;
+    font-size: 11px;
+    margin-top: 3px;
+    line-height: 1.4;
 }
 
 .restore-step b {
     color: var(--green);
+    font-size: 13px;
 }
 
 
@@ -627,7 +662,7 @@ canvas {
 
 .risk-grid {
     display: grid;
-    grid-template-columns: 1.5fr 1fr;
+    grid-template-columns: 1.4fr 1fr;
     gap: 18px;
 }
 
@@ -637,28 +672,54 @@ canvas {
     background: #1b2531;
     border-radius: 10px;
     overflow: hidden;
-    margin: 25px 0 15px;
+    margin: 20px 0 15px;
 }
 
 #riskMeterFill {
     height: 100%;
-    width: 25%;
+    width: 20%;
     background: var(--green);
-    transition: 0.6s;
+    transition: 0.6s ease-out;
 }
 
 .risk-value {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
 }
 
 .risk-value strong {
     color: var(--green);
+    font-size: 22px;
 }
 
 .risk-value span {
     color: var(--muted);
     font-size: 11px;
+}
+
+.risk-scenario-meta {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #090e15;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 10px;
+}
+
+.risk-scenario-meta span:first-child {
+    color: #38bdf8;
+    font-weight: 600;
+}
+
+.risk-explanation-text {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.4;
 }
 
 .factor {
@@ -668,13 +729,18 @@ canvas {
     border-bottom: 1px solid var(--border);
 }
 
+.factor:last-child {
+    border-bottom: none;
+}
+
 .factor span {
     color: var(--muted);
     font-size: 12px;
 }
 
 .factor b {
-    font-size: 12px;
+    font-size: 13px;
+    color: white;
 }
 
 
@@ -682,44 +748,119 @@ canvas {
 
 .facility-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
+    grid-template-columns: 1fr;
+    gap: 18px;
 }
 
-.facility-card {
+.facility-card-advanced {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 18px;
+    padding: 24px;
+}
+
+.facility-header {
     display: flex;
     align-items: center;
-    gap: 13px;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
 }
 
-.facility-icon {
-    font-size: 27px;
+.facility-identity {
+    display: flex;
+    align-items: center;
+    gap: 14px;
 }
 
-.facility-card h3 {
-    font-size: 13px;
-    margin-bottom: 5px;
+.facility-icon-large {
+    font-size: 32px;
+    width: 54px;
+    height: 54px;
+    background: #20122e;
+    border: 1px solid #4a276b;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.facility-card p {
+.facility-identity h3 {
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+
+.facility-identity p {
     color: var(--muted);
+    font-size: 12px;
+}
+
+.facility-badge {
     font-size: 10px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
 }
 
-.facility-status {
-    margin-left: auto;
-    font-size: 8px;
-    padding: 5px 8px;
-    border-radius: 10px;
-}
-
-.facility-status.safe {
+.facility-badge.safe {
     color: var(--green);
     background: #0d2b20;
+    border: 1px solid #1c513d;
+}
+
+.facility-badge.at-risk {
+    color: var(--orange);
+    background: #30240f;
+    border: 1px solid #634b17;
+}
+
+.facility-badge.lost {
+    color: var(--red);
+    background: #32151b;
+    border: 1px solid #6e2533;
+}
+
+.facility-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.facility-meta-item {
+    background: #090e15;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.facility-meta-item span {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 4px;
+}
+
+.facility-meta-item strong {
+    font-size: 12px;
+}
+
+.facility-action-box {
+    background: #111a24;
+    border: 1px solid #1e3a5f;
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 12px;
+    line-height: 1.5;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.facility-action-box b {
+    color: #38bdf8;
 }
 
 
@@ -736,29 +877,46 @@ canvas {
 
 .restore-description {
     color: var(--muted);
-    max-width: 650px;
+    max-width: 680px;
     line-height: 1.7;
     margin: 10px 0 25px;
 }
 
 .primary-btn {
     border: none;
-    background: var(--blue);
+    background: #38bdf8;
     color: #06101a;
-    padding: 12px 18px;
+    padding: 12px 22px;
     border-radius: 8px;
-    font-weight: bold;
+    font-weight: 700;
     cursor: pointer;
+    font-size: 13px;
+    transition: 0.2s;
 }
 
 .primary-btn:hover {
-    opacity: 0.85;
+    background: #7dd3fc;
 }
 
-#restoreMessage {
+.restore-metrics-table {
+    width: 100%;
     margin-top: 20px;
-    color: var(--green);
-    font-size: 13px;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.restore-metrics-table th,
+.restore-metrics-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.restore-metrics-table th {
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    background: #090e15;
 }
 
 

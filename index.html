@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GridTwin | Grid Resilience Platform</title>
+    <title>GridTwin | AI-Assisted Grid Resilience &amp; Digital Twin</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -16,7 +17,7 @@
             <div class="logo-icon">⚡</div>
             <div>
                 <h2>GridTwin</h2>
-                <span>Grid Intelligence</span>
+                <span>Grid Resilience Platform</span>
             </div>
         </div>
 
@@ -45,36 +46,36 @@
         <div class="workflow">
             <p>GRIDTWIN WORKFLOW</p>
 
-            <div class="workflow-step active-step">
+            <div class="workflow-step active-step" id="wfStep1">
                 <span>01</span>
                 SIMULATE
             </div>
 
-            <div class="workflow-step">
+            <div class="workflow-step" id="wfStep2">
                 <span>02</span>
                 PREDICT
             </div>
 
-            <div class="workflow-step">
+            <div class="workflow-step" id="wfStep3">
                 <span>03</span>
                 CONTAIN
             </div>
 
-            <div class="workflow-step">
+            <div class="workflow-step" id="wfStep4">
                 <span>04</span>
                 RESTORE
             </div>
         </div>
 
         <div class="sidebar-bottom">
-            <span class="online-dot"></span>
-            Simulation Engine Online
+            <span class="online-dot online" id="sidebarDot"></span>
+            <span id="sidebarStatusText">Simulation Engine Online</span>
         </div>
 
     </aside>
 
 
-    <!-- Main -->
+    <!-- Main Content Area -->
     <main class="main">
 
         <!-- Header -->
@@ -82,28 +83,28 @@
 
             <div>
                 <h1>Grid Resilience Dashboard</h1>
-                <p>Simulate failures. Predict cascades. Restore intelligently.</p>
+                <p>Simulate failures • Predict cascades • Contain risks • Restore intelligently</p>
             </div>
 
-            <div class="system-status">
-                <span class="status-dot"></span>
+            <div class="system-status" id="systemStatusBadge">
+                <span class="status-dot online"></span>
                 SYSTEM ONLINE
             </div>
 
         </header>
 
 
-        <!-- Overview -->
+        <!-- Overview Section -->
         <section id="overview" class="section active-section">
 
-            <!-- Statistics -->
+            <!-- Statistics Grid -->
             <div class="stats-grid">
 
                 <div class="stat-card">
                     <div class="stat-icon blue">⚡</div>
                     <div>
                         <span>Total Components</span>
-                        <strong id="totalComponents">12</strong>
+                        <strong id="totalComponents">8</strong>
                     </div>
                 </div>
 
@@ -111,14 +112,14 @@
                     <div class="stat-icon green">✓</div>
                     <div>
                         <span>Healthy</span>
-                        <strong id="healthyComponents">11</strong>
+                        <strong id="healthyComponents">8</strong>
                     </div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-icon orange">⚠</div>
                     <div>
-                        <span>At Risk</span>
+                        <span>At Risk / Warning</span>
                         <strong id="riskComponents">0</strong>
                     </div>
                 </div>
@@ -134,16 +135,16 @@
             </div>
 
 
-            <!-- Main Grid Area -->
+            <!-- Main Grid Canvas & Details Area -->
             <div class="dashboard-grid">
 
-                <!-- Canvas -->
+                <!-- 2D / 3D Grid Canvas Panel -->
                 <div class="panel grid-panel">
 
                     <div class="panel-header">
                         <div>
                             <h2>Grid Topology &amp; Digital Twin</h2>
-                            <p>Click a component to inspect it</p>
+                            <p id="gridSubtitle">Interactive representation of 8-node physical electrical network</p>
                         </div>
 
                         <div class="view-toggle" role="group" aria-label="Grid view">
@@ -153,13 +154,16 @@
 
                         <div class="legend">
                             <span><i class="legend-dot healthy"></i> Healthy</span>
-                            <span><i class="legend-dot warning"></i> Warning</span>
-                            <span><i class="legend-dot failed"></i> Failed</span>
+                            <span><i class="legend-dot warning"></i> Warning / Rerouted</span>
+                            <span><i class="legend-dot failed"></i> Failed / Outage</span>
+                            <span><i class="legend-dot critical"></i> Critical (H1)</span>
                         </div>
                     </div>
 
                     <div class="canvas-container" id="canvasContainer">
                         <canvas id="gridCanvas"></canvas>
+                        
+                        <!-- 3D Digital Twin WebGL Container -->
                         <div id="grid3dContainer" class="grid-3d-container hidden">
                             <canvas id="gridCanvas3D"></canvas>
 
@@ -175,9 +179,9 @@
 
                             <div class="cinematic-overlay hidden" id="cinematicOverlay">
                                 <div class="cinematic-banner">
-                                    <span class="cinematic-badge">SIMULATED ARC FAULT</span>
+                                    <span class="cinematic-badge">PHYSICAL ARC FAULT SIMULATION</span>
                                     <h3 id="cinematicTitle">CRITICAL OUTAGE</h3>
-                                    <p id="cinematicSubtitle">Executing physical arc fault simulation</p>
+                                    <p id="cinematicSubtitle">Simulating cascade propagation and trip sequences</p>
                                 </div>
                             </div>
 
@@ -193,20 +197,20 @@
                 </div>
 
 
-                <!-- Component Information -->
+                <!-- Component Details Panel -->
                 <div class="panel component-panel">
 
                     <div class="panel-header">
                         <div>
                             <h2>Component Details</h2>
-                            <p id="componentHint">Select a component</p>
+                            <p id="componentHint">Click any component to inspect</p>
                         </div>
                     </div>
 
                     <div id="componentDetails" class="empty-state">
                         <div class="empty-icon">⌁</div>
                         <h3>No Component Selected</h3>
-                        <p>Click a transformer, feeder, load or facility on the grid.</p>
+                        <p>Click any substation, transformer, feeder, or load on the grid map to view live telemetry and simulate faults.</p>
                     </div>
 
                 </div>
@@ -214,96 +218,42 @@
             </div>
 
 
-            <!-- Impact Section -->
+            <!-- Dynamic Failure Impact Analysis Panel -->
             <div id="impactPanel" class="impact-panel hidden">
 
                 <div class="impact-header">
                     <div>
-                        <span class="danger-label">CASCADE DETECTED</span>
+                        <span class="danger-label" id="impactBadge">CASCADE SIMULATION ACTIVE</span>
                         <h2>Failure Impact Analysis</h2>
                     </div>
 
                     <div class="impact-score">
-                        <span>Risk Score</span>
-                        <strong id="riskScore">82%</strong>
+                        <span>Risk Index</span>
+                        <strong id="riskScore">0%</strong>
                     </div>
                 </div>
 
-                <div class="impact-grid">
-
-                    <div class="impact-card failed-card">
-                        <span>FAILED COMPONENT</span>
-                        <strong id="failedName">T7</strong>
-                        <small>Transformer</small>
-                    </div>
-
-                    <div class="impact-card warning-card">
-                        <span>OVERLOADED</span>
-                        <strong>F3</strong>
-                        <small>118% simulated loading</small>
-                    </div>
-
-                    <div class="impact-card critical-card">
-                        <span>CRITICAL FACILITY</span>
-                        <strong>H1</strong>
-                        <small>Hospital supply risk</small>
-                    </div>
-
+                <div class="impact-grid" id="impactGrid">
+                    <!-- Populated dynamically -->
                 </div>
 
             </div>
 
 
-            <!-- Restoration -->
+            <!-- Dynamic Recommended Restoration Panel -->
             <div id="restorationPanel" class="panel restoration-panel hidden">
 
                 <div class="panel-header">
                     <div>
-                        <h2>🛠 Recommended Restoration</h2>
-                        <p>Best simulated recovery sequence</p>
+                        <h2>🛠 Recommended Restoration Plan</h2>
+                        <p id="restoreStrategyTitle">Optimal recovery path prioritizing critical infrastructure</p>
                     </div>
 
-                    <span class="recommendation-badge">RECOMMENDED</span>
+                    <span class="recommendation-badge" id="restoreScoreBadge">OPTIMIZED SEQUENCE</span>
                 </div>
 
-                <div class="restoration-list">
-
-                    <div class="restore-step">
-                        <span>01</span>
-                        <div>
-                            <strong>Isolate failed component</strong>
-                            <p>Separate T7 from the affected network.</p>
-                        </div>
-                        <b>✓</b>
-                    </div>
-
-                    <div class="restore-step">
-                        <span>02</span>
-                        <div>
-                            <strong>Transfer feasible load</strong>
-                            <p>Use available alternate supply path through F5.</p>
-                        </div>
-                        <b>✓</b>
-                    </div>
-
-                    <div class="restore-step">
-                        <span>03</span>
-                        <div>
-                            <strong>Prioritize Hospital H1</strong>
-                            <p>Protect critical healthcare supply.</p>
-                        </div>
-                        <b>✓</b>
-                    </div>
-
-                    <div class="restore-step">
-                        <span>04</span>
-                        <div>
-                            <strong>Restore remaining loads</strong>
-                            <p>Gradually restore non-critical services.</p>
-                        </div>
-                        <b>✓</b>
-                    </div>
-
+                <div class="restoration-list" id="restorationList">
+                    <!-- Populated dynamically -->
                 </div>
 
             </div>
@@ -311,16 +261,16 @@
         </section>
 
 
-        <!-- Grid Map -->
+        <!-- Grid Map Full View Section -->
         <section id="grid" class="section">
 
             <div class="page-title">
-                <h2>Grid Map</h2>
-                <p>Interactive representation of the electrical network.</p>
+                <h2>Network Grid Map</h2>
+                <p>Full-scale interactive layout of all substations, transformers, feeders, and load nodes.</p>
             </div>
 
             <div class="panel full-panel">
-                <div class="canvas-container large">
+                <div class="canvas-container large" id="canvasContainerLarge">
                     <canvas id="gridCanvasLarge"></canvas>
                 </div>
             </div>
@@ -328,12 +278,12 @@
         </section>
 
 
-        <!-- Risk -->
+        <!-- Risk Analysis Section -->
         <section id="risk" class="section">
 
             <div class="page-title">
                 <h2>Risk Analysis</h2>
-                <p>Identify vulnerable components and cascading risk.</p>
+                <p>Live AI vulnerability scoring powered by Hema Risk Engine &amp; Cascade Intelligence.</p>
             </div>
 
             <div class="risk-grid">
@@ -342,36 +292,42 @@
                     <h3>Overall Grid Risk</h3>
 
                     <div class="risk-meter">
-                        <div id="riskMeterFill"></div>
+                        <div id="riskMeterFill" style="width: 12%;"></div>
                     </div>
 
                     <div class="risk-value">
                         <strong id="riskValue">LOW</strong>
-                        <span>Current simulated risk</span>
+                        <span id="riskSubtitle">System operating under safe baseline conditions</span>
                     </div>
+
+                    <div class="risk-scenario-meta">
+                        <span id="riskScenarioTag">Scenario: Baseline State</span>
+                        <span id="riskTimestamp">Evaluated: Real-Time</span>
+                    </div>
+                    <p class="risk-explanation-text">Risk score is derived dynamically from the current simulated scenario state.</p>
                 </div>
 
                 <div class="panel">
-                    <h3>Risk Factors</h3>
+                    <h3>Risk Factor Breakdown</h3>
 
                     <div class="factor">
                         <span>Component Loading</span>
-                        <b>72%</b>
+                        <b id="factorLoading">18.5%</b>
                     </div>
 
                     <div class="factor">
                         <span>Network Dependency</span>
-                        <b>64%</b>
+                        <b id="factorDependency">24.0%</b>
                     </div>
 
                     <div class="factor">
-                        <span>Critical Exposure</span>
-                        <b>81%</b>
+                        <span>Critical Facility Exposure</span>
+                        <b id="factorCriticalExposure">15.0%</b>
                     </div>
 
                     <div class="factor">
-                        <span>Redundancy</span>
-                        <b>42%</b>
+                        <span>Path Redundancy Resilience</span>
+                        <b id="factorRedundancy">88.0%</b>
                     </div>
                 </div>
 
@@ -380,72 +336,42 @@
         </section>
 
 
-        <!-- Critical Facilities -->
+        <!-- Critical Facilities Section -->
         <section id="critical" class="section">
 
             <div class="page-title">
                 <h2>Critical Facilities</h2>
-                <p>Monitor high-priority services affected by grid failures.</p>
+                <p>Continuous monitoring of high-priority life-safety infrastructure (Hospital H1).</p>
             </div>
 
-            <div class="facility-grid">
-
-                <div class="facility-card">
-                    <div class="facility-icon">🏥</div>
-                    <div>
-                        <h3>Hospital H1</h3>
-                        <p>Critical medical facility</p>
-                    </div>
-                    <span class="facility-status safe">SAFE</span>
-                </div>
-
-                <div class="facility-card">
-                    <div class="facility-icon">🚒</div>
-                    <div>
-                        <h3>Emergency Station E1</h3>
-                        <p>Emergency response facility</p>
-                    </div>
-                    <span class="facility-status safe">SAFE</span>
-                </div>
-
-                <div class="facility-card">
-                    <div class="facility-icon">🏭</div>
-                    <div>
-                        <h3>Industrial Load L2</h3>
-                        <p>High consumption load</p>
-                    </div>
-                    <span class="facility-status safe">NORMAL</span>
-                </div>
-
+            <div class="facility-grid" id="criticalFacilitiesGrid">
+                <!-- Dynamically populated from backend data -->
             </div>
 
         </section>
 
 
-        <!-- Restoration -->
+        <!-- Restoration Center Section -->
         <section id="restore" class="section">
 
             <div class="page-title">
-                <h2>Restoration Center</h2>
-                <p>Recommended actions for recovering affected services.</p>
+                <h2>Restoration Operations Center</h2>
+                <p>OR-Tools powered combinatorial optimization for contingency recovery and load transfers.</p>
             </div>
 
-            <div class="panel">
+            <div class="panel" id="restorationCenterPanel">
 
                 <div class="restore-big-icon">🛠️</div>
 
-                <h2>Restoration Strategy</h2>
+                <h2>Restoration Strategy &amp; Feasibility</h2>
 
-                <p class="restore-description">
-                    GridTwin evaluates possible isolation, rerouting and
-                    restoration actions while prioritizing critical facilities.
+                <p class="restore-description" id="restoreCenterDescription">
+                    GridTwin evaluates candidate isolation switches, rerouting paths, and capacity constraints while enforcing strict priority on Hospital H1.
                 </p>
 
-                <button class="primary-btn" onclick="showRestoration()">
-                    Generate Restoration Plan
-                </button>
-
-                <div id="restoreMessage"></div>
+                <div id="restoreCenterActions" class="restore-center-content">
+                    <!-- Populated dynamically based on simulation state -->
+                </div>
 
             </div>
 
@@ -453,9 +379,11 @@
 
     </main>
 
-
+    <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Application Scripts -->
     <script src="grid3d.js"></script>
     <script src="script.js"></script>
 

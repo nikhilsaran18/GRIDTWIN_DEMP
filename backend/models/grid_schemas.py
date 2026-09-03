@@ -5,8 +5,8 @@ Defines normalized component contract for use across the system.
 Adapters translate between GridTwin schema and restoration module schemas.
 """
 
-from typing import List, Literal, Optional
-from pydantic import BaseModel, Field
+from typing import List, Literal, Optional, Dict, Any
+from pydantic import BaseModel, Field, ConfigDict
 
 
 # Node/Component Status
@@ -20,7 +20,8 @@ StatusType = Literal[
     "critical_risk",
     "failed",
     "isolated",
-    "disconnected"
+    "disconnected",
+    "rerouted"
 ]
 
 # Component Types
@@ -38,6 +39,21 @@ ComponentType = Literal[
 
 class NodeSchema(BaseModel):
     """Represents a grid component (node)."""
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "id": "T7",
+                "name": "Transformer T7",
+                "type": "transformer",
+                "capacity_mw": 10.0,
+                "load_mw": 8.0,
+                "status": "normal",
+                "criticality": 0.82,
+                "is_critical_load": False
+            }
+        }
+    )
+
     id: str = Field(..., description="Unique component identifier")
     name: str = Field(..., description="Human-readable component name")
     type: ComponentType = Field(..., description="Component type")
@@ -53,32 +69,11 @@ class NodeSchema(BaseModel):
         description="Is this a critical facility (hospital, emergency service)"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": "T7",
-                "name": "Transformer T7",
-                "type": "transformer",
-                "capacity_mw": 10.0,
-                "load_mw": 8.0,
-                "status": "normal",
-                "criticality": 0.82,
-                "is_critical_load": False
-            }
-        }
-
 
 class EdgeSchema(BaseModel):
     """Represents a connection between components (edge)."""
-    id: str = Field(..., description="Unique edge identifier")
-    source: str = Field(..., description="Source node ID")
-    target: str = Field(..., description="Target node ID")
-    capacity_mw: float = Field(..., description="Maximum capacity in MW")
-    load_mw: float = Field(..., description="Current load in MW")
-    status: StatusType = Field(default="normal", description="Edge status")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "E1",
                 "source": "T7",
@@ -88,6 +83,14 @@ class EdgeSchema(BaseModel):
                 "status": "normal"
             }
         }
+    )
+
+    id: str = Field(..., description="Unique edge identifier")
+    source: str = Field(..., description="Source node ID")
+    target: str = Field(..., description="Target node ID")
+    capacity_mw: float = Field(..., description="Maximum capacity in MW")
+    load_mw: float = Field(..., description="Current load in MW")
+    status: StatusType = Field(default="normal", description="Edge status")
 
 
 class GridSummary(BaseModel):
@@ -113,7 +116,7 @@ class CascadeEvent(BaseModel):
     component: str = Field(..., description="Affected component ID")
     event: str = Field(
         ...,
-        description="Event type: FAILED, OVERLOADED, SUPPLY_AT_RISK, DISCONNECTED"
+        description="Event type: FAILED, OVERLOADED, SUPPLY_AT_RISK, DISCONNECTED, REROUTED"
     )
     reason: Optional[str] = Field(None, description="Reason for event")
 
@@ -144,6 +147,14 @@ class RiskScore(BaseModel):
     )
 
 
+class RiskFactorBreakdown(BaseModel):
+    """Factor breakdown for risk analysis screen."""
+    component_loading: float = Field(default=0.0, description="Average/peak component loading factor %")
+    network_dependency: float = Field(default=0.0, description="Network dependency risk factor %")
+    critical_exposure: float = Field(default=0.0, description="Critical facility exposure risk %")
+    redundancy: float = Field(default=100.0, description="Redundancy resilience factor %")
+
+
 class RiskAnalysis(BaseModel):
     """Risk analysis results."""
     risks: List[RiskScore] = Field(..., description="Risk scores for components")
@@ -156,6 +167,10 @@ class RiskAnalysis(BaseModel):
         None,
         description="Dashboard analytics derived from current risk results"
     )
+    factors: Optional[RiskFactorBreakdown] = Field(
+        default_factory=RiskFactorBreakdown,
+        description="Risk factor breakdown metrics"
+    )
     risk_source: Optional[str] = Field(
         None,
         description="Identifier for the risk-scoring implementation"
@@ -164,7 +179,7 @@ class RiskAnalysis(BaseModel):
 
 class RestorationAction(BaseModel):
     """Single restoration action."""
-    order: int = Field(..., description="Action sequence number")
+    order: int = Field(default=1, description="Action sequence number")
     action: str = Field(
         ...,
         description="Action type: isolate, reroute, restore"
@@ -172,13 +187,15 @@ class RestorationAction(BaseModel):
     component: Optional[str] = Field(None, description="Primary component")
     from_component: Optional[str] = Field(None, description="Source for reroute")
     via_component: Optional[str] = Field(None, description="Via component for reroute")
+    details: Optional[str] = Field(None, description="Action description")
 
 
 class RestorationStrategy(BaseModel):
     """Restoration strategy recommendation."""
     strategy_id: str = Field(..., description="Strategy identifier")
     score: float = Field(..., description="Strategy score 0-100")
-    actions: List[RestorationAction] = Field(..., description="Ordered actions")
+    actions: List[RestorationAction] = Field(default_factory=list, description="Ordered actions")
+    description: Optional[str] = Field(None, description="Strategy summary")
 
 
 class RestorationComparison(BaseModel):
@@ -206,6 +223,9 @@ class RestorationResult(BaseModel):
         description="Is optimizer available"
     )
     reason: Optional[str] = Field(None, description="Explanation if unavailable")
+    actions: List[RestorationAction] = Field(default_factory=list, description="Step by step restoration actions")
+    status: Optional[str] = Field(None, description="Restoration status")
+    explanation: Optional[str] = Field(None, description="Human readable explanation")
 
 
 class SimulationMetrics(BaseModel):
@@ -228,17 +248,17 @@ class SimulationResponse(BaseModel):
     )
     
     affected_components: List[NodeSchema] = Field(
-        ...,
+        default_factory=list,
         description="All affected components"
     )
     
     critical_loads_at_risk: List[NodeSchema] = Field(
-        ...,
+        default_factory=list,
         description="Critical facilities at risk"
     )
     
     cascade: List[CascadeEvent] = Field(
-        ...,
+        default_factory=list,
         description="Cascade event sequence"
     )
     
@@ -248,7 +268,7 @@ class SimulationResponse(BaseModel):
     )
     
     risk_scores: List[RiskScore] = Field(
-        ...,
+        default_factory=list,
         description="Detailed risk scores"
     )
     

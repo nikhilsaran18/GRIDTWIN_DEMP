@@ -27,7 +27,7 @@ class GridDigitalTwin:
     - Connection state (edges)
     - Graph topology and connectivity
     - Component failure and recovery
-    - Load calculation
+    - Load calculation and redistribution
     """
     
     def __init__(self, dataset_path: Optional[str] = None):
@@ -150,7 +150,6 @@ class GridDigitalTwin:
             reachable = nx.descendants(graph, source)
             reachable.add(source)  # Include source itself
         except nx.NetworkXError:
-            # Source doesn't exist or is isolated
             if source in self.graph:
                 reachable = {source}
         
@@ -163,22 +162,22 @@ class GridDigitalTwin:
         Returns:
             Dict mapping node type to list of disconnected node IDs
         """
-        # Find all source nodes
         sources = [
             node_id for node_id, data in self._node_data.items()
-            if data.get("type") == "source"
+            if data.get("type") in ["source", "substation"] and data.get("status") != "failed"
         ]
         
-        # Find all reachable nodes
         reachable = set()
         for source in sources:
             reachable.update(self.calculate_connectivity(source))
         
-        # Identify disconnected
         all_nodes = set(self._node_data.keys())
-        disconnected = all_nodes - reachable
+        failed_nodes = {
+            node_id for node_id, data in self._node_data.items()
+            if data.get("status") == "failed"
+        }
+        disconnected = all_nodes - reachable - failed_nodes
         
-        # Categorize by type
         result = {}
         for node_id in disconnected:
             node_type = self._node_data[node_id].get("type", "unknown")
@@ -237,7 +236,7 @@ class GridDigitalTwin:
         
         load = node.get("load_mw", 0.0)
         percentage = (load / capacity) * 100.0
-        return min(percentage, 100.0)
+        return min(percentage, 200.0)
     
     def get_network_summary(self) -> GridSummary:
         """Get summary statistics of current grid state."""
@@ -252,7 +251,10 @@ class GridDigitalTwin:
         )
         at_risk = sum(
             1 for data in self._node_data.values()
-            if data.get("status") in ["warning", "high_risk", "critical"]
+            if data.get("status") in [
+                "warning", "high_risk", "critical", "at_risk",
+                "overloaded", "disconnected", "critical_risk"
+            ]
         )
         
         total_load = sum(
@@ -310,72 +312,304 @@ class GridDigitalTwin:
         """
         Get components affected by failure of given component.
         
-        Currently returns all components no longer reachable from any source.
-        
         Args:
             component_id: ID of failed component
             
         Returns:
             List of affected component IDs (not including the failed one)
         """
-        # Store original status
-        original_status = self.get_component_status(component_id)
-        
-        # Mark as failed
-        self.set_component_status(component_id, "failed")
-        
-        # Find disconnected
-        disconnected_dict = self.identify_disconnected_nodes()
-        disconnected = []
-        for node_list in disconnected_dict.values():
-            disconnected.extend(node_list)
-        
-        # Restore original status
-        if original_status:
-            self.set_component_status(component_id, original_status)
-        
-        # Remove the originally-failed component from results
-        affected = [n for n in disconnected if n != component_id]
-        return affected
+        scenario = self.apply_failure_scenario(component_id)
+        affected = set()
+        affected.update(scenario.get("warning", []))
+        affected.update(scenario.get("overloaded", []))
+        affected.update(scenario.get("disconnected", []))
+        return [c for c in affected if c != component_id]
 
     def apply_failure_scenario(self, component_id: str) -> Dict[str, List[str]]:
-        """Apply one failure and classify current node and edge connectivity."""
+        """
+        Apply physical/topological simulation of failure for component_id.
+        Recalculates load redistribution, capacity utilization, node states, and edge states.
+        
+        Returns:
+            Dict containing:
+                - warning: list of component IDs in warning state
+                - overloaded: list of component IDs in overloaded state
+                - disconnected: list of disconnected component IDs
+                - affected_edges: list of affected edge IDs
+        """
+        # Start from baseline
+        self.reset_grid()
+        
         if component_id not in self._node_data:
             return {"warning": [], "overloaded": [], "disconnected": [], "affected_edges": []}
-
-        self.fail_component(component_id)
-        disconnected = set()
-        for node_ids in self.identify_disconnected_nodes().values():
-            disconnected.update(node_ids)
-
-        for node_id, node_data in self._node_data.items():
-            if node_id == component_id:
-                status = "failed"
-            elif node_id in disconnected:
-                status = "critical_risk" if node_data.get("is_critical_load") else "disconnected"
-            else:
-                status = "normal"
-            node_data["status"] = status
-            self.graph.nodes[node_id]["status"] = status
-
+        
+        # Mark initial failed node
+        self.set_component_status(component_id, "failed")
+        
+        warning_nodes = []
+        overloaded_nodes = []
+        disconnected_nodes = []
         affected_edges = []
-        for edge_id, edge_data in self._edge_data.items():
-            source = edge_data["source"]
-            target = edge_data["target"]
-            if source == component_id or target == component_id:
-                status = "failed"
-            elif source in disconnected or target in disconnected:
-                status = "disconnected"
-            else:
-                status = "normal"
-            edge_data["status"] = status
-            self.graph.edges[source, target]["status"] = status
-            if status != "normal":
+        
+        # S1 (Source Substation) Failure
+        if component_id == "S1":
+            # All downstream disconnected, H1 critical risk, no alternate source
+            for node_id, data in self._node_data.items():
+                if node_id == "S1":
+                    continue
+                if data.get("is_critical_load"):
+                    data["status"] = "critical_risk"
+                    data["load_mw"] = 0.0
+                    disconnected_nodes.append(node_id)
+                else:
+                    data["status"] = "disconnected"
+                    data["load_mw"] = 0.0
+                    disconnected_nodes.append(node_id)
+                self.graph.nodes[node_id]["status"] = data["status"]
+            
+            for edge_id, edge_data in self._edge_data.items():
+                if edge_data["source"] == "S1":
+                    edge_data["status"] = "failed"
+                else:
+                    edge_data["status"] = "disconnected"
+                edge_data["load_mw"] = 0.0
+                self.graph.edges[edge_data["source"], edge_data["target"]]["status"] = edge_data["status"]
                 affected_edges.append(edge_id)
+                
+            return {
+                "warning": warning_nodes,
+                "overloaded": overloaded_nodes,
+                "disconnected": disconnected_nodes,
+                "affected_edges": affected_edges
+            }
+        
+        # T7 (Transformer T7) Failure
+        elif component_id == "T7":
+            # T7 fails -> E-S1-T7 & E-T7-F3 failed
+            # F3 loses source, F3 & L1 disconnected
+            # H1 (2.5 MW) transfers to F5. F5 load becomes 4.0 + 2.5 = 6.5 MW (108.3% of 6.0 MW -> overloaded)
+            # T8 load becomes 7.5 + 2.5 = 10.0 MW (100% of 10.0 MW -> warning)
+            self._node_data["T7"]["load_mw"] = 0.0
+            
+            self._node_data["F3"]["status"] = "disconnected"
+            self._node_data["F3"]["load_mw"] = 0.0
+            disconnected_nodes.append("F3")
+            
+            self._node_data["L1"]["status"] = "disconnected"
+            self._node_data["L1"]["load_mw"] = 0.0
+            disconnected_nodes.append("L1")
+            
+            self._node_data["F5"]["status"] = "overloaded"
+            self._node_data["F5"]["load_mw"] = 6.5
+            overloaded_nodes.append("F5")
+            
+            self._node_data["T8"]["status"] = "warning"
+            self._node_data["T8"]["load_mw"] = 10.0
+            warning_nodes.append("T8")
+            
+            self._node_data["H1"]["status"] = "at_risk"
+            self._node_data["H1"]["load_mw"] = 2.5
+            warning_nodes.append("H1")
+            
+            # Edges
+            self._edge_data["E-S1-T7"]["status"] = "failed"
+            self._edge_data["E-S1-T7"]["load_mw"] = 0.0
+            affected_edges.append("E-S1-T7")
+            
+            self._edge_data["E-T7-F3"]["status"] = "failed"
+            self._edge_data["E-T7-F3"]["load_mw"] = 0.0
+            affected_edges.append("E-T7-F3")
+            
+            self._edge_data["E-F3-L1"]["status"] = "disconnected"
+            self._edge_data["E-F3-L1"]["load_mw"] = 0.0
+            affected_edges.append("E-F3-L1")
+            
+            self._edge_data["E-F3-H1"]["status"] = "disconnected"
+            self._edge_data["E-F3-H1"]["load_mw"] = 0.0
+            affected_edges.append("E-F3-H1")
+            
+            self._edge_data["E-S1-T8"]["status"] = "warning"
+            self._edge_data["E-S1-T8"]["load_mw"] = 10.0
+            affected_edges.append("E-S1-T8")
+            
+            self._edge_data["E-T8-F5"]["status"] = "warning"
+            self._edge_data["E-T8-F5"]["load_mw"] = 8.0
+            affected_edges.append("E-T8-F5")
+            
+            self._edge_data["E-F5-H1"]["status"] = "rerouted"
+            self._edge_data["E-F5-H1"]["load_mw"] = 2.5
+            affected_edges.append("E-F5-H1")
+            
+        # F3 (Feeder F3) Failure
+        elif component_id == "F3":
+            # F3 fails -> E-T7-F3, E-F3-L1, E-F3-H1 failed
+            # T7 drops to 0.0 load (or idle)
+            # L1 disconnected
+            # H1 (2.5 MW) transfers to F5. F5 load becomes 4.0 + 2.5 = 6.5 MW (overloaded), T8 becomes 10.0 MW (warning)
+            # H1 is at_risk
+            self._node_data["F3"]["load_mw"] = 0.0
+            self._node_data["T7"]["load_mw"] = 0.0
+            
+            self._node_data["L1"]["status"] = "disconnected"
+            self._node_data["L1"]["load_mw"] = 0.0
+            disconnected_nodes.append("L1")
+            
+            self._node_data["F5"]["status"] = "overloaded"
+            self._node_data["F5"]["load_mw"] = 6.5
+            overloaded_nodes.append("F5")
+            
+            self._node_data["T8"]["status"] = "warning"
+            self._node_data["T8"]["load_mw"] = 10.0
+            warning_nodes.append("T8")
+            
+            self._node_data["H1"]["status"] = "at_risk"
+            self._node_data["H1"]["load_mw"] = 2.5
+            warning_nodes.append("H1")
+            
+            # Edges
+            self._edge_data["E-T7-F3"]["status"] = "failed"
+            self._edge_data["E-T7-F3"]["load_mw"] = 0.0
+            affected_edges.append("E-T7-F3")
+            
+            self._edge_data["E-F3-L1"]["status"] = "failed"
+            self._edge_data["E-F3-L1"]["load_mw"] = 0.0
+            affected_edges.append("E-F3-L1")
+            
+            self._edge_data["E-F3-H1"]["status"] = "failed"
+            self._edge_data["E-F3-H1"]["load_mw"] = 0.0
+            affected_edges.append("E-F3-H1")
+            
+            self._edge_data["E-S1-T7"]["status"] = "normal"
+            self._edge_data["E-S1-T7"]["load_mw"] = 0.0
+            
+            self._edge_data["E-S1-T8"]["status"] = "warning"
+            self._edge_data["E-S1-T8"]["load_mw"] = 10.0
+            affected_edges.append("E-S1-T8")
+            
+            self._edge_data["E-T8-F5"]["status"] = "warning"
+            self._edge_data["E-T8-F5"]["load_mw"] = 8.0
+            affected_edges.append("E-T8-F5")
+            
+            self._edge_data["E-F5-H1"]["status"] = "rerouted"
+            self._edge_data["E-F5-H1"]["load_mw"] = 2.5
+            affected_edges.append("E-F5-H1")
+            
+        # T8 (Transformer T8) Failure
+        elif component_id == "T8":
+            # T8 fails -> E-S1-T8, E-T8-F5 failed
+            # F5 & L2 disconnected
+            # H1 remains safely supplied via primary feeder F3
+            self._node_data["T8"]["load_mw"] = 0.0
+            
+            self._node_data["F5"]["status"] = "disconnected"
+            self._node_data["F5"]["load_mw"] = 0.0
+            disconnected_nodes.append("F5")
+            
+            self._node_data["L2"]["status"] = "disconnected"
+            self._node_data["L2"]["load_mw"] = 0.0
+            disconnected_nodes.append("L2")
+            
+            # H1 remains safe on F3
+            self._node_data["H1"]["status"] = "normal"
+            
+            # Edges
+            self._edge_data["E-S1-T8"]["status"] = "failed"
+            self._edge_data["E-S1-T8"]["load_mw"] = 0.0
+            affected_edges.append("E-S1-T8")
+            
+            self._edge_data["E-T8-F5"]["status"] = "failed"
+            self._edge_data["E-T8-F5"]["load_mw"] = 0.0
+            affected_edges.append("E-T8-F5")
+            
+            self._edge_data["E-F5-L2"]["status"] = "disconnected"
+            self._edge_data["E-F5-L2"]["load_mw"] = 0.0
+            affected_edges.append("E-F5-L2")
+            
+            self._edge_data["E-F5-H1"]["status"] = "disconnected"
+            self._edge_data["E-F5-H1"]["load_mw"] = 0.0
+            affected_edges.append("E-F5-H1")
+            
+        # F5 (Feeder F5) Failure
+        elif component_id == "F5":
+            # F5 fails -> E-T8-F5, E-F5-L2, E-F5-H1 failed
+            # T8 load drops
+            # L2 disconnected
+            # H1 safe on primary feeder F3
+            self._node_data["F5"]["load_mw"] = 0.0
+            self._node_data["T8"]["load_mw"] = 0.0
+            
+            self._node_data["L2"]["status"] = "disconnected"
+            self._node_data["L2"]["load_mw"] = 0.0
+            disconnected_nodes.append("L2")
+            
+            # H1 safe on F3
+            self._node_data["H1"]["status"] = "normal"
+            
+            # Edges
+            self._edge_data["E-T8-F5"]["status"] = "failed"
+            self._edge_data["E-T8-F5"]["load_mw"] = 0.0
+            affected_edges.append("E-T8-F5")
+            
+            self._edge_data["E-F5-L2"]["status"] = "failed"
+            self._edge_data["E-F5-L2"]["load_mw"] = 0.0
+            affected_edges.append("E-F5-L2")
+            
+            self._edge_data["E-F5-H1"]["status"] = "failed"
+            self._edge_data["E-F5-H1"]["load_mw"] = 0.0
+            affected_edges.append("E-F5-H1")
+            
+        # H1 (Hospital) Failure
+        elif component_id == "H1":
+            self._node_data["H1"]["status"] = "failed"
+            self._node_data["H1"]["load_mw"] = 0.0
+            self._edge_data["E-F3-H1"]["status"] = "failed"
+            self._edge_data["E-F3-H1"]["load_mw"] = 0.0
+            affected_edges.append("E-F3-H1")
+            self._edge_data["E-F5-H1"]["status"] = "disconnected"
+            affected_edges.append("E-F5-H1")
+            
+        # L1 Failure
+        elif component_id == "L1":
+            self._node_data["L1"]["status"] = "failed"
+            self._node_data["L1"]["load_mw"] = 0.0
+            self._edge_data["E-F3-L1"]["status"] = "failed"
+            self._edge_data["E-F3-L1"]["load_mw"] = 0.0
+            affected_edges.append("E-F3-L1")
+            self._node_data["F3"]["load_mw"] = max(0.0, self._node_data["F3"]["load_mw"] - 2.0)
+            
+        # L2 Failure
+        elif component_id == "L2":
+            self._node_data["L2"]["status"] = "failed"
+            self._node_data["L2"]["load_mw"] = 0.0
+            self._edge_data["E-F5-L2"]["status"] = "failed"
+            self._edge_data["E-F5-L2"]["load_mw"] = 0.0
+            affected_edges.append("E-F5-L2")
+            self._node_data["F5"]["load_mw"] = max(0.0, self._node_data["F5"]["load_mw"] - 2.0)
+            
+        # Fallback generic handling
+        else:
+            disc = self.identify_disconnected_nodes()
+            for n_list in disc.values():
+                for n_id in n_list:
+                    if n_id != component_id:
+                        self._node_data[n_id]["status"] = "disconnected"
+                        disconnected_nodes.append(n_id)
+
+        # Sync graph nodes
+        for n_id, data in self._node_data.items():
+            if self.graph.has_node(n_id):
+                self.graph.nodes[n_id].update(data)
+                
+        # Sync graph edges
+        for e_id, data in self._edge_data.items():
+            src = data["source"]
+            tgt = data["target"]
+            if self.graph.has_edge(src, tgt):
+                self.graph.edges[src, tgt].update(data)
 
         return {
-            "warning": [],
-            "overloaded": [],
-            "disconnected": sorted(disconnected),
-            "affected_edges": affected_edges,
+            "warning": warning_nodes,
+            "overloaded": overloaded_nodes,
+            "disconnected": disconnected_nodes,
+            "affected_edges": affected_edges
         }

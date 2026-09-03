@@ -48,95 +48,88 @@ class CascadeEngine:
         step = 1
         
         # Step 1: Mark failed component
-        if not self.grid.get_component(failed_component_id):
+        node = self.grid.get_component(failed_component_id)
+        if not node:
             return events
         
+        comp_name = node.get("name", failed_component_id)
         events.append(CascadeEvent(
             step=step,
             component=failed_component_id,
             event="FAILED",
-            reason="Initial failure event"
+            reason=f"Initial physical trip on {comp_name}"
         ))
         step += 1
         
-        # Step 2: Find affected components (disconnected by the failure)
-        affected = self.grid.get_affected_components(failed_component_id)
+        # Step 2: Apply scenario and read physical states
+        scenario = self.grid.apply_failure_scenario(failed_component_id)
         
-        for comp_id in affected:
+        disconnected = scenario.get("disconnected", [])
+        for comp_id in disconnected:
+            if comp_id == failed_component_id:
+                continue
             events.append(CascadeEvent(
                 step=step,
                 component=comp_id,
                 event="DISCONNECTED",
-                reason=f"No longer reachable due to {failed_component_id} failure"
+                reason=f"Downstream path lost due to {failed_component_id} outage"
             ))
             step += 1
         
-        # Step 3: Identify critical facilities at risk
+        # Step 3: Critical facility status
         critical_facilities = self.grid.identify_critical_facilities()
-        critical_at_risk = [c for c in critical_facilities if c in affected]
+        for crit_id in critical_facilities:
+            if crit_id == failed_component_id:
+                continue
+            crit_node = self.grid.get_component(crit_id)
+            if not crit_node:
+                continue
+            c_status = crit_node.get("status")
+            if c_status in ["critical_risk", "disconnected"]:
+                events.append(CascadeEvent(
+                    step=step,
+                    component=crit_id,
+                    event="SUPPLY_LOST",
+                    reason="Critical healthcare power lost - no energized source available"
+                ))
+                step += 1
+            elif c_status in ["at_risk", "warning", "overloaded"]:
+                events.append(CascadeEvent(
+                    step=step,
+                    component=crit_id,
+                    event="SUPPLY_AT_RISK",
+                    reason="Primary feed interrupted - reliant on alternate feeder capacity"
+                ))
+                step += 1
         
-        for crit_id in critical_at_risk:
-            events.append(CascadeEvent(
-                step=step,
-                component=crit_id,
-                event="SUPPLY_AT_RISK",
-                reason="Critical facility supply at risk"
-            ))
-            step += 1
-        
-        # Step 4: Detect capacity violations (overloads)
-        # Simulate load redistribution - affected load now tries to reroute
-        # through alternative paths, potentially overloading other components
-        overloaded = self._detect_overloaded_components(
-            failed_component_id,
-            affected
-        )
-        
+        # Step 4: Overloaded / Warning components
+        overloaded = scenario.get("overloaded", [])
         for comp_id in overloaded:
+            if comp_id == failed_component_id:
+                continue
             load_pct = self.grid.calculate_load_percentage(comp_id)
             events.append(CascadeEvent(
                 step=step,
                 component=comp_id,
                 event="OVERLOADED",
-                reason=f"Capacity violation: {load_pct:.1f}% utilization"
+                reason=f"Rerouted power flow caused {load_pct:.1f}% capacity utilization"
+            ))
+            step += 1
+            
+        warnings = scenario.get("warning", [])
+        for comp_id in warnings:
+            if comp_id == failed_component_id or comp_id in overloaded or comp_id in critical_facilities:
+                continue
+            load_pct = self.grid.calculate_load_percentage(comp_id)
+            events.append(CascadeEvent(
+                step=step,
+                component=comp_id,
+                event="WARNING",
+                reason=f"Operating under elevated loading: {load_pct:.1f}% utilization"
             ))
             step += 1
         
         return events
-    
-    def _detect_overloaded_components(
-        self,
-        failed_component_id: str,
-        affected: List[str]
-    ) -> List[str]:
-        """
-        Heuristically detect components that would be overloaded.
-        
-        This is a simplified model: components adjacent to failed/affected
-        nodes that now carry rerouted load.
-        
-        Args:
-            failed_component_id: The initially failed component
-            affected: List of now-disconnected components
-            
-        Returns:
-            List of potentially overloaded component IDs
-        """
-        overloaded = []
-        
-        # Get upstream components (that might now have extra load)
-        # These are components that have edges pointing to affected nodes
-        for affected_id in affected:
-            # Find incoming edges to affected component
-            predecessors = list(self.grid.graph.predecessors(affected_id))
-            for pred in predecessors:
-                if pred != failed_component_id:
-                    load_pct = self.grid.calculate_load_percentage(pred)
-                    # Consider overloaded if > 80% capacity
-                    if load_pct > 80.0 and pred not in overloaded:
-                        overloaded.append(pred)
-        
-        return overloaded
     
     def get_secondary_vulnerabilities(
         self,
@@ -144,25 +137,17 @@ class CascadeEngine:
     ) -> Dict[str, List[str]]:
         """
         Identify secondary vulnerable assets after cascade.
-        
-        Returns categorized vulnerable components.
-        
-        Args:
-            failed_component_id: ID of failed component
-            
-        Returns:
-            Dict with categories:
-                - overloaded: Components with >80% utilization
-                - disconnected: Components with no supply path
-                - at_risk: Critical facilities threatened
         """
-        affected = self.grid.get_affected_components(failed_component_id)
-        overloaded = self._detect_overloaded_components(failed_component_id, affected)
+        scenario = self.grid.apply_failure_scenario(failed_component_id)
         critical_facilities = self.grid.identify_critical_facilities()
-        at_risk_critical = [c for c in critical_facilities if c in affected]
+        at_risk_critical = [
+            c for c in critical_facilities
+            if self.grid.get_component_status(c) in ["critical_risk", "at_risk", "disconnected", "warning"]
+            and c != failed_component_id
+        ]
         
         return {
-            "overloaded": overloaded,
-            "disconnected": affected,
+            "overloaded": scenario.get("overloaded", []),
+            "disconnected": scenario.get("disconnected", []),
             "at_risk_critical": at_risk_critical
         }

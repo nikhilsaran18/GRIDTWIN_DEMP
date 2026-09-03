@@ -1022,27 +1022,49 @@
             if (!simulationResult) return;
 
             const failedId = simulationResult.failed_component ? simulationResult.failed_component.id : null;
-            const affectedIds = new Set((simulationResult.affected_components || []).map(c => c.id));
-            const criticalIds = new Set((simulationResult.critical_loads_at_risk || []).map(c => c.id));
+            if (failedId) {
+                this.setNodeVisualState(failedId, 'failed');
+            }
 
-            // Mark affected downstream nodes in 3D
-            affectedIds.forEach(id => {
-                if (id !== failedId) {
-                    this.setNodeVisualState(id, 'warning');
-                }
+            // Sync all nodes from response.grid if present
+            if (simulationResult.grid && simulationResult.grid.nodes) {
+                simulationResult.grid.nodes.forEach(n => {
+                    this.setNodeVisualState(n.id, n.status || 'normal');
+                });
+            } else {
+                const affected = simulationResult.affected_components || [];
+                affected.forEach(c => {
+                    if (c.id !== failedId) {
+                        const st = (c.status === 'failed' || c.status === 'overloaded' || c.status === 'critical_risk') ? 'failed' : 'warning';
+                        this.setNodeVisualState(c.id, st);
+                    }
+                });
+            }
+
+            // Update 3D power lines based on authoritative edge statuses
+            const affectedEdgeMap = {};
+            (simulationResult.affected_edges || []).forEach(e => {
+                affectedEdgeMap[e.id] = e.status || 'failed';
+                affectedEdgeMap[`${e.source}|${e.target}`] = e.status || 'failed';
             });
 
-            criticalIds.forEach(id => {
-                this.setNodeVisualState(id, 'warning');
-            });
-
-            // Update 3D power lines
             this.edgeLines.forEach(edge => {
-                const isSevered = (edge.source === failedId || edge.target === failedId);
+                const edgeKey = `${edge.source}|${edge.target}`;
+                const edgeStatus = affectedEdgeMap[edge.id] || affectedEdgeMap[edgeKey];
+                const isSevered = (edge.source === failedId || edge.target === failedId) || edgeStatus === 'failed';
+
                 if (isSevered) {
-                    edge.mesh.material.color.setHex(0x475569);
-                    edge.mesh.material.opacity = 0.2;
+                    edge.mesh.material.color.setHex(0xff5364);
+                    edge.mesh.material.opacity = 0.5;
                     edge.particles.forEach(p => { p.active = false; p.mesh.visible = false; });
+                } else if (edgeStatus === 'warning') {
+                    edge.mesh.material.color.setHex(0xffb547);
+                    edge.mesh.material.opacity = 0.85;
+                    edge.particles.forEach(p => { p.active = true; p.mesh.visible = true; });
+                } else if (edgeStatus === 'rerouted') {
+                    edge.mesh.material.color.setHex(0x38bdf8);
+                    edge.mesh.material.opacity = 1.0;
+                    edge.particles.forEach(p => { p.active = true; p.mesh.visible = true; });
                 }
             });
         }

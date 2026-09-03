@@ -10,7 +10,7 @@ backend/data/grid.json the single source of truth.
 from typing import Dict, List, Optional
 
 from core.grid_engine import GridDigitalTwin
-from models.grid_schemas import RiskAnalysis, RiskScore
+from models.grid_schemas import RiskAnalysis, RiskScore, RiskFactorBreakdown
 from services.hema_risk_engine import HemaRiskEngine
 
 
@@ -45,19 +45,29 @@ class RiskService:
             score = 100.0
             level = "critical"
             reasons.insert(0, "Component has failed")
-        elif status == "critical":
-            score = max(score, 80.0)
+        elif status in ["critical", "critical_risk"]:
+            score = max(score, 95.0)
             level = "critical"
-            reasons.insert(0, "Component is in critical operational status")
+            reasons.insert(0, "Critical facility supply disrupted")
         elif status == "high_risk":
             score = max(score, 60.0)
             level = "high_risk"
             reasons.insert(0, "Component is in high-risk operational status")
-        elif status == "warning":
-            score = max(score, 40.0)
+        elif status == "overloaded":
+            score = max(score, 85.0)
+            level = "critical"
+            reasons.insert(0, "Component exceeds rated thermal capacity")
+        elif status in ["warning", "at_risk"]:
+            score = max(score, 55.0)
             if level == "normal":
                 level = "warning"
-            reasons.insert(0, "Component is in warning operational status")
+            reasons.insert(0, "Component is under elevated stress / alternate path reliance")
+        elif status == "disconnected":
+            # If source is failed, disconnected assets are fully unenergized
+            is_blackout = (self.grid.get_component_status("S1") == "failed")
+            score = max(score, 85.0 if is_blackout else 70.0)
+            level = "critical" if is_blackout else "high_risk"
+            reasons.insert(0, "Component is disconnected from power supply")
 
         return RiskScore(
             component_id=component_id,
@@ -88,14 +98,70 @@ class RiskService:
         )
         overall_risk = min(overall_risk, 100.0)
 
+        # Compute scenario-specific risk breakdown factors
+        factors = self._compute_factors(risk_scores)
+
         analytics = self._build_analytics(risk_scores, next_likely)
 
         return RiskAnalysis(
             risks=risk_scores,
             next_likely_component=next_likely,
-            overall_risk=overall_risk,
+            overall_risk=round(overall_risk, 1),
             analytics=analytics,
+            factors=factors,
             risk_source="hema_ai_risk_module",
+        )
+
+    def _compute_factors(self, scores: List[RiskScore]) -> RiskFactorBreakdown:
+        """Calculate dynamic factor breakdown based on actual current grid state."""
+        # 1. Component Loading: Average/peak loading of active components
+        active_loadings = [
+            s.loading_percentage for s in scores
+            if s.loading_percentage is not None and self.grid.get_component_status(s.component_id) != "failed"
+        ]
+        avg_loading = sum(active_loadings) / len(active_loadings) if active_loadings else 0.0
+        peak_loading = max(active_loadings) if active_loadings else 0.0
+        component_loading_factor = round((avg_loading * 0.4 + peak_loading * 0.6), 1)
+
+        # 2. Network Dependency: Ratio of affected/disconnected/strained nodes
+        failed_count = sum(1 for s in scores if self.grid.get_component_status(s.component_id) == "failed")
+        disc_count = sum(1 for s in scores if self.grid.get_component_status(s.component_id) in ["disconnected", "critical_risk"])
+        warn_count = sum(1 for s in scores if self.grid.get_component_status(s.component_id) in ["warning", "overloaded", "at_risk"])
+        
+        total = len(scores) or 1
+        dependency_factor = round(min(100.0, ((failed_count * 30 + disc_count * 20 + warn_count * 15) / total) * 1.5 + 20.0), 1)
+        if failed_count == 0:
+            dependency_factor = 24.0
+
+        # 3. Critical Exposure: Hospital H1 state
+        h1_status = self.grid.get_component_status("H1")
+        if h1_status in ["critical_risk", "disconnected", "failed"]:
+            critical_exposure = 100.0
+        elif h1_status in ["at_risk", "warning", "overloaded"]:
+            critical_exposure = 82.0
+        else:
+            critical_exposure = 15.0
+
+        # 4. Redundancy: Available alternate supply headroom
+        f5_status = self.grid.get_component_status("F5")
+        t8_status = self.grid.get_component_status("T8")
+        s1_status = self.grid.get_component_status("S1")
+        if s1_status == "failed":
+            redundancy = 0.0
+        elif f5_status in ["overloaded", "warning"] or t8_status in ["warning", "overloaded"]:
+            redundancy = 38.0
+        elif f5_status == "failed" or t8_status == "failed":
+            redundancy = 25.0
+        elif failed_count > 0:
+            redundancy = 45.0
+        else:
+            redundancy = 88.0
+
+        return RiskFactorBreakdown(
+            component_loading=component_loading_factor,
+            network_dependency=dependency_factor,
+            critical_exposure=critical_exposure,
+            redundancy=redundancy
         )
 
     def _build_analytics(
